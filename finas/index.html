@@ -1,0 +1,605 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FINAS Group — Energy, land and homes in Transylvania</title>
+<meta name="description" content="FINAS Group develops hydro, solar and wind power, cultivates a vineyard and an organic orchard, and builds homes around Cluj-Napoca.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* ---------- Design tokens ---------- */
+  :root {
+    --ink: #10140f;
+    --paper: #f4f1ea;
+    --muted: #8f968c;
+    --moss: #5d6b52;
+    --deep: #0e1a13;        /* night-forest "blueprint" background */
+    --accent: #ff8a2a;      /* sun amber: line art, CTAs */
+    --font: "Inter Tight", "Helvetica Neue", Arial, system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    --gutter: clamp(16px, 3.5vw, 56px);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { background: var(--deep); }
+  body { font-family: var(--font); color: var(--paper); background: var(--deep); -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+  body.loading { overflow: hidden; }
+  a { color: inherit; text-decoration: none; }
+  button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+
+  /* ---------- Loader ---------- */
+  .loader { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; background: var(--deep); transition: background-color .9s ease, opacity .6s ease; }
+  .loader.is-see { background-color: rgba(8, 14, 9, .4); }
+  .loader.is-done { opacity: 0; pointer-events: none; }
+  .loader__mark { display: flex; align-items: center; gap: 22px; opacity: 0; transition: opacity .6s ease; }
+  .loader.is-see .loader__mark { opacity: 1; }
+  .loader__count { font-size: clamp(28px, 3vw, 44px); letter-spacing: -.02em; font-variant-numeric: tabular-nums; min-width: 3.4em; }
+
+  /* ---------- Logo (placeholder mark) ---------- */
+  .logo { display: inline-flex; align-items: center; gap: 8px; line-height: .95; font-size: 13px; font-weight: 600; letter-spacing: .02em; text-transform: uppercase; }
+  .logo small { display: block; font-weight: 400; letter-spacing: .08em; font-size: .78em; }
+  .logo svg { width: 26px; height: 26px; flex: none; }
+  .loader .logo { font-size: 17px; }
+  .loader .logo svg { width: 34px; height: 34px; }
+
+  /* ---------- Hero ---------- */
+  .hero { position: relative; height: 100vh; height: 100svh; min-height: 560px; overflow: hidden; background: #2b4013; isolation: isolate; }
+  .hero__media { position: absolute; inset: -3%; transform-origin: 58% 42%; scale: 1; transition: scale 5s cubic-bezier(.2, .6, .2, 1); will-change: scale, translate; }
+  body.push .hero__media { scale: 1.12; }
+  .hero__media svg { width: 100%; height: 100%; display: block; }
+  .hero__shade { position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(to top, rgba(8, 12, 6, .75) 0%, rgba(8, 12, 6, .3) 38%, rgba(8, 12, 6, 0) 62%), linear-gradient(to bottom, rgba(8, 12, 6, .25), rgba(8, 12, 6, 0) 22%); }
+
+  .nav { position: absolute; z-index: 5; top: 20px; left: 50%; display: flex; gap: 5px; translate: -50% -16px; opacity: 0; transition: translate .8s cubic-bezier(.2, .7, .2, 1) .15s, opacity .8s ease .15s; }
+  body.ready .nav { translate: -50% 0; opacity: 1; }
+  .pill { display: flex; align-items: center; height: 44px; padding: 0 16px; background: #fff; color: var(--ink); border-radius: 6px; font-size: 15px; letter-spacing: -.01em; white-space: nowrap; }
+  .pill--links { gap: 22px; padding: 0 20px; }
+  .pill--links a { display: inline-flex; align-items: center; gap: 6px; transition: color .2s; }
+  .pill--links a:hover, .pill--links a.is-active { color: #d9620b; }
+  .pill--cta { transition: background .2s, color .2s; }
+  .pill--cta:hover { background: var(--accent); color: var(--ink); }
+  .pill--menu { display: none; }
+  .caret { width: 9px; height: 9px; }
+
+  .hero__content { position: absolute; z-index: 4; left: var(--gutter); right: var(--gutter); bottom: 6vh; }
+  .eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: rgba(244, 241, 234, .75); margin-bottom: 2.4vh; opacity: 0; transition: opacity .8s ease .2s; }
+  body.ready .eyebrow { opacity: 1; }
+  .hero__title { font-weight: 500; letter-spacing: -.035em; line-height: .98; font-size: clamp(42px, 6.1vw, 100px); }
+  .hero__title .line { display: block; overflow: hidden; padding-bottom: .06em; }
+  .hero__title .line > span { display: block; translate: 0 108%; transition: translate 1.1s cubic-bezier(.2, .75, .15, 1); }
+  .hero__title .line:nth-child(2) > span { transition-delay: .09s; }
+  body.ready .hero__title .line > span { translate: 0 0; }
+  .hero__bottom { margin-top: 4vh; display: flex; align-items: flex-end; justify-content: space-between; gap: 32px; opacity: 0; translate: 0 14px; transition: opacity .9s ease .35s, translate .9s cubic-bezier(.2, .7, .2, 1) .35s; }
+  body.ready .hero__bottom { opacity: 1; translate: 0 0; }
+  .hero__bottom p { max-width: 620px; font-size: clamp(14px, 1.1vw, 17px); line-height: 1.45; }
+  .hero__actions { display: flex; gap: 14px; flex: none; }
+  .btn { display: inline-flex; align-items: center; height: 48px; padding: 0 22px; border-radius: 3px; font-size: 16px; letter-spacing: -.01em; transition: filter .2s, background .2s; }
+  .btn--accent { background: var(--accent); color: var(--ink); }
+  .btn--accent:hover { filter: brightness(1.08); }
+  .btn--ghost { background: rgba(30, 36, 28, .72); border: 1px solid rgba(255, 255, 255, .2); color: #fff; backdrop-filter: blur(6px); }
+  .btn--ghost:hover { background: rgba(30, 36, 28, .9); }
+
+  /* ---------- Word-by-word reveal ---------- */
+  .reveal { position: relative; height: 240vh; }
+  .reveal__sticky { position: sticky; top: 0; height: 100vh; display: flex; align-items: center; padding: 0 var(--gutter); }
+  .reveal__text { max-width: 1120px; font-weight: 500; letter-spacing: -.015em; line-height: 1.32; font-size: clamp(22px, 2.6vw, 42px); }
+  .reveal__text .w { opacity: .2; transition: opacity .15s linear; }
+
+  /* ---------- Pinned portfolio sequence ---------- */
+  .build { position: relative; }
+  .build__sticky { position: sticky; top: 0; height: 100vh; overflow: hidden;
+    background-image: repeating-linear-gradient(90deg, rgba(255, 138, 42, .045) 0 1px, transparent 1px calc(100% / 12)); }
+  .build__head { position: absolute; top: 4.5vh; left: var(--gutter); font-family: var(--mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: rgba(244, 241, 234, .5); }
+  .build__stage { position: absolute; inset: 0; display: grid; place-items: center; }
+  .build__svg { width: min(62vw, 880px); height: auto; overflow: visible; filter: drop-shadow(0 0 5px rgba(255, 138, 42, .35)); }
+  .art path, .art circle { fill: none; stroke: var(--accent); stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1 1; stroke-dashoffset: calc(1 - var(--draw, 1)); }
+  .art .soft { stroke-opacity: .45; }
+
+  .label { position: absolute; top: 50%; width: 300px; will-change: opacity, translate; }
+  .label--left { left: var(--gutter); }
+  .label--right { left: calc(100% - var(--gutter) - 300px); }
+  .label .tag { font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin-bottom: 14px; }
+  .label h3 { font-size: clamp(28px, 2.7vw, 44px); font-weight: 500; letter-spacing: -.025em; line-height: 1.02; }
+  .label .lead { margin-top: 20px; font-size: 13.5px; font-weight: 600; }
+  .label .body { margin-top: 8px; font-size: 12.5px; line-height: 1.5; color: rgba(244, 241, 234, .66); }
+  .facts { margin-top: 16px; list-style: none; font-family: var(--mono); font-size: 11px; }
+  .facts li { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-top: 1px solid rgba(244, 241, 234, .12); color: rgba(244, 241, 234, .6); }
+  .facts li b { font-weight: 500; color: var(--paper); text-align: right; }
+
+  .rail { position: absolute; left: 50%; bottom: 4.5vh; translate: -50% 0; display: flex; gap: 6px; list-style: none; }
+  .rail button { display: flex; flex-direction: column; gap: 8px; width: 82px; text-align: left; font-size: 11px; letter-spacing: .02em; color: rgba(244, 241, 234, .4); transition: color .3s; }
+  .rail button::before { content: ""; height: 2px; background: currentColor; opacity: .5; transition: opacity .3s; }
+  .rail button.is-active { color: var(--accent); }
+  .rail button.is-active::before { opacity: 1; }
+
+  /* ---------- Closing ---------- */
+  .closing { background: var(--paper); color: var(--ink); padding: 18vh var(--gutter) 12vh; }
+  .closing h2 { font-weight: 500; letter-spacing: -.035em; line-height: .98; font-size: clamp(40px, 6vw, 100px); max-width: 13ch; }
+  .stats { margin-top: 12vh; display: grid; grid-template-columns: repeat(4, 1fr); gap: 28px; }
+  .stat { border-top: 1px solid rgba(16, 20, 15, .2); padding-top: 18px; }
+  .stat b { display: block; font-size: clamp(34px, 3.6vw, 60px); font-weight: 500; letter-spacing: -.03em; }
+  .stat span { display: block; margin-top: 6px; color: var(--moss); font-size: 14px; line-height: 1.4; }
+  .affiliates { margin-top: 14vh; display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+  .card { background: #fff; border: 1px solid rgba(16, 20, 15, .1); border-radius: 6px; padding: 32px; display: flex; flex-direction: column; gap: 12px; }
+  .card .tag { font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #b25406; }
+  .card h3 { font-size: 28px; font-weight: 500; letter-spacing: -.02em; }
+  .card p { color: #3d443a; line-height: 1.5; font-size: 15px; }
+  .card a { margin-top: auto; padding-top: 8px; font-weight: 500; text-decoration: underline; text-underline-offset: 3px; }
+
+  .contact { background: var(--ink); color: var(--paper); padding: 14vh var(--gutter) 10vh; display: grid; grid-template-columns: 1.2fr 1fr; gap: 48px; }
+  .contact h2 { font-weight: 500; letter-spacing: -.03em; line-height: 1; font-size: clamp(36px, 4.6vw, 72px); }
+  .contact address { font-style: normal; line-height: 1.7; color: rgba(244, 241, 234, .75); font-size: 16px; }
+  .contact address b { color: var(--paper); font-weight: 600; }
+  .contact address a { color: var(--accent); }
+  .footer { background: var(--ink); color: rgba(244, 241, 234, .5); padding: 24px var(--gutter); display: flex; justify-content: space-between; gap: 16px; font-size: 13px; border-top: 1px solid rgba(244, 241, 234, .1); }
+
+  @media (max-width: 1080px) { .pill--links { display: none; } .pill--menu { display: flex; } .stats { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 760px) {
+    .hero__bottom { flex-direction: column; align-items: flex-start; }
+    .build__svg { width: 94vw; margin-top: 30vh; }
+    .label, .label--left, .label--right { left: 16px; right: 16px; width: auto; top: 10vh; }
+    .facts { display: none; }
+    .rail button { width: 36px; font-size: 0; }
+    .stats, .affiliates, .contact { grid-template-columns: 1fr; }
+  }
+  @media (prefers-reduced-motion: reduce) { .hero__media, .hero__title .line > span, .hero__bottom, .nav { transition: none !important; } }
+</style>
+</head>
+<body class="loading">
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <!-- Placeholder mark: replace with the official FINAS logo -->
+  <symbol id="mark" viewBox="0 0 26 26">
+    <rect x="1" y="1" width="24" height="24" rx="3" fill="currentColor"/>
+    <path d="M7 20V6h12M7 13h9" fill="none" stroke="var(--mark-cut, #fff)" stroke-width="3"/>
+  </symbol>
+  <symbol id="caret" viewBox="0 0 10 10"><path d="M1.5 3.5 5 7l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.4"/></symbol>
+</svg>
+
+<!-- 1. Loader -->
+<div class="loader" id="loader" aria-hidden="true">
+  <div class="loader__mark">
+    <span class="logo" style="--mark-cut: var(--deep)"><svg><use href="#mark"/></svg><span>Finas<small>group</small></span></span>
+    <span class="loader__count" id="count">0%</span>
+  </div>
+</div>
+
+<!-- 2. Hero -->
+<header class="hero" id="hero">
+  <div class="hero__media" id="heroMedia"><svg id="heroScene" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true"></svg></div>
+  <div class="hero__shade"></div>
+
+  <nav class="nav" aria-label="Primary">
+    <a class="pill" href="#"><span class="logo"><svg><use href="#mark"/></svg><span>Finas<small>group</small></span></span></a>
+    <div class="pill pill--links">
+      <a href="#build" class="is-active">renewable energy</a>
+      <a href="#build">agriculture</a>
+      <a href="#build">real estate</a>
+      <a href="#affiliates">affiliates <svg class="caret"><use href="#caret"/></svg></a>
+      <a href="#">news</a>
+    </div>
+    <a class="pill pill--cta" href="#contact">contact us</a>
+    <button class="pill pill--menu" type="button">menu</button>
+  </nav>
+
+  <div class="hero__content">
+    <p class="eyebrow">Cluj-Napoca · Transylvania · Romania</p>
+    <h1 class="hero__title">
+      <span class="line"><span>Energy, land and homes,</span></span>
+      <span class="line"><span>rooted in Transylvania.</span></span>
+    </h1>
+    <div class="hero__bottom">
+      <p>FINAS Group develops hydro, solar and wind power, grows wine and organic apples, and builds homes around Cluj-Napoca.</p>
+      <div class="hero__actions">
+        <a class="btn btn--accent" href="#contact">contact us</a>
+        <a class="btn btn--ghost" href="#build">our projects</a>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- 3. Word-by-word reveal -->
+  <section class="reveal" id="reveal">
+    <div class="reveal__sticky">
+      <p class="reveal__text" id="revealText">Since our first wind project in 2007, we have been turning Romania's natural resources into long-term assets: mountain rivers into clean power, sunny fields into solar parks, a hillside near Turda into a vineyard, and an old orchard in Sălaj into certified organic harvests.</p>
+    </div>
+  </section>
+
+  <!-- 4. Pinned portfolio sequence -->
+  <section class="build" id="build" aria-label="Our portfolio">
+    <div class="build__sticky">
+      <p class="build__head">Our work — 7 ways we build value</p>
+      <div class="build__stage"><svg class="build__svg" id="buildSvg" viewBox="-320 -210 640 420" aria-hidden="true"></svg></div>
+      <div id="labels"></div>
+      <ol class="rail" id="rail"></ol>
+    </div>
+  </section>
+
+  <!-- 5. Closing -->
+  <section class="closing">
+    <h2>One group, many landscapes.</h2>
+    <div class="stats">
+      <div class="stat"><b>15 MW</b><span>solar capacity across four parks, about 62 ha</span></div>
+      <div class="stat"><b>4.85 MW</b><span>net hydro power from four run-of-river plants</span></div>
+      <div class="stat"><b>~17,700</b><span>MWh of hydro energy produced a year</span></div>
+      <div class="stat"><b>€19M</b><span>EU grants secured for the Negrești wind park</span></div>
+    </div>
+
+    <div class="affiliates" id="affiliates">
+      <article class="card">
+        <p class="tag">Affiliate · Turda</p>
+        <h3>Sarea-n bucate</h3>
+        <p>The "vineyard restaurant", set at the foot of our vines near Turda, where traditional dishes meet modern cooking. Available for private events.</p>
+        <a href="https://www.facebook.com/restaurantsareanbucate">Visit the restaurant</a>
+      </article>
+      <article class="card">
+        <p class="tag">Affiliate · Cluj-Napoca</p>
+        <h3>Finas Medical</h3>
+        <p>A private medical centre offering occupational medicine, dermatology, haematology, neurology, paediatrics, gynaecology, endocrinology and internal medicine.</p>
+        <a href="http://www.finasmedical.ro/">finasmedical.ro</a>
+      </article>
+    </div>
+  </section>
+
+  <section class="contact" id="contact">
+    <h2>Let's build the next project together.</h2>
+    <address>
+      <b>FINAS GROUP</b><br>
+      Central Shopping Center, Level 2.5, Corp B<br>
+      22–26 Regele Ferdinand Street<br>
+      400110 Cluj-Napoca, Romania<br><br>
+      Tel/Fax: <a href="tel:+40264588122">(+4) 0264 588 122</a><br>
+      Email: <a href="mailto:office@finasinvest.ro">office@finasinvest.ro</a>
+    </address>
+  </section>
+</main>
+
+<footer class="footer">
+  <span>© FINAS Group. All rights reserved.</span>
+  <span>Concept redesign</span>
+</footer>
+
+<script>
+(() => {
+  const NS = 'http://www.w3.org/2000/svg';
+  const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---------- Isometric helpers ---------- */
+  const C30 = Math.cos(Math.PI / 6);
+  const iso = (x, y, z, o) => [o.x + (x - y) * C30 * o.s, o.y + (x + y) * 0.5 * o.s - z * o.s];
+  const f = n => n.toFixed(1);
+  const poly = (pts, close = true) => 'M' + pts.map(p => f(p[0]) + ' ' + f(p[1])).join('L') + (close ? 'Z' : '');
+  const seg = (a, b) => `M${f(a[0])} ${f(a[1])}L${f(b[0])} ${f(b[1])}`;
+  function boxEdges(x0, y0, z0, w, d, h, o) {
+    const x1 = x0 + w, y1 = y0 + d, z1 = z0 + h, P = (x, y, z) => iso(x, y, z, o);
+    return [
+      poly([P(x0, y0, z1), P(x1, y0, z1), P(x1, y1, z1), P(x0, y1, z1)]),
+      poly([P(x1, y0, z1), P(x1, y0, z0), P(x1, y1, z0), P(x0, y1, z0), P(x0, y1, z1)], false),
+      seg(P(x1, y1, z1), P(x1, y1, z0)),
+    ];
+  }
+
+  /* =========================================================
+     HERO SCENE — aerial solar park (placeholder for a real photo/video)
+     ========================================================= */
+  function buildHero() {
+    const svg = document.getElementById('heroScene');
+    const o = { x: 800, y: 70, s: 1 };
+    const P = (x, y, z) => iso(x, y, z, o);
+    let s = `
+      <defs>
+        <linearGradient id="grass" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6a7f2e"/><stop offset=".5" stop-color="#4a6420"/><stop offset="1" stop-color="#26380e"/></linearGradient>
+        <linearGradient id="panel" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3a4d6b"/><stop offset=".5" stop-color="#1c2a40"/><stop offset="1" stop-color="#27385a"/></linearGradient>
+        <filter id="grain" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/><feComposite in2="SourceGraphic" operator="in"/></filter>
+        <filter id="patches" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency=".005" numOctaves="3" seed="11"/><feColorMatrix type="matrix" values="0 0 0 0 .82  0 0 0 0 .8  0 0 0 0 .3  1.6 0 0 0 -.62"/><feComposite in2="SourceGraphic" operator="in"/></filter>
+        <filter id="soft"><feGaussianBlur stdDeviation="3"/></filter>
+        <filter id="bokeh" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="26"/></filter>
+        <radialGradient id="leaf" cx=".4" cy=".35" r=".7"><stop offset="0" stop-color="#d4cf62"/><stop offset=".6" stop-color="#909b2e"/><stop offset="1" stop-color="#4f5f16"/></radialGradient>
+      </defs>
+      <rect width="1600" height="900" fill="url(#grass)"/>
+      <rect width="1600" height="900" fill="#000" filter="url(#patches)" opacity=".45"/>
+      <rect width="1600" height="900" fill="#000" filter="url(#grain)" opacity=".22" style="mix-blend-mode:overlay"/>`;
+
+    // distant tree line (top) + scattered trees
+    [[1380, 30, 90], [1480, 110, 80], [1560, 0, 70], [1270, -20, 70], [110, 30, 90], [30, 140, 80], [230, -20, 70], [1560, 320, 60], [180, 520, 50]].forEach(([x, y, r]) => {
+      s += `<ellipse cx="${x + 18}" cy="${y + 24}" rx="${r}" ry="${r * .8}" fill="#16230a" opacity=".55" filter="url(#soft)"/>`;
+      s += `<circle cx="${x}" cy="${y}" r="${r}" fill="#35501a"/><circle cx="${x - r * .3}" cy="${y - r * .3}" r="${r * .55}" fill="#4d6b22"/><circle cx="${x + r * .35}" cy="${y - r * .1}" r="${r * .4}" fill="#5c7a28" opacity=".8"/>`;
+    });
+
+    // fence
+    const fence = [P(-50, -50, 0), P(760, -50, 0), P(760, 700, 0), P(-50, 700, 0)];
+    s += `<path d="${poly(fence)}" fill="#556b25" opacity=".35"/>`;
+    s += `<path d="${poly(fence)}" fill="none" stroke="#1d1f18" stroke-width="1.3" opacity=".6"/>`;
+    for (let x = -50; x <= 760; x += 45) s += `<path d="${seg(P(x, 700, 0), P(x, 700, 14))}" stroke="#1d1f18" stroke-width="1.1" opacity=".55"/>`;
+    for (let y = -50; y <= 700; y += 45) s += `<path d="${seg(P(760, y, 0), P(760, y, 14))}" stroke="#1d1f18" stroke-width="1.1" opacity=".55"/>`;
+    // service road
+    s += `<path d="${poly([P(-50, 330, 0), P(760, 330, 0), P(760, 356, 0), P(-50, 356, 0)])}" fill="#8a8578" opacity=".8"/>`;
+
+    // solar rows: tilted panels facing south (+y), shadows cast toward +x
+    const rows = [];
+    for (let r = 0; r < 5; r++) rows.push({ y: r * 62, x0: 0, x1: 700 });
+    for (let r = 0; r < 5; r++) rows.push({ y: 390 + r * 62, x0: 0, x1: 700 });
+    rows.forEach(({ y, x0, x1 }) => {
+      const sh = [P(x0 + 18, y + 4, 0), P(x1 + 18, y + 4, 0), P(x1 + 6, y + 40, 0), P(x0 + 6, y + 40, 0)];
+      s += `<path d="${poly(sh)}" fill="#10140a" opacity=".45" filter="url(#soft)"/>`;
+    });
+    rows.forEach(({ y, x0, x1 }) => {
+      for (let x = x0 + 20; x < x1; x += 80) s += `<path d="${seg(P(x, y + 30, 0), P(x, y + 30, 10))}" stroke="#2a2d28" stroke-width="2"/>`;
+      const quad = [P(x0, y, 28), P(x1, y, 28), P(x1, y + 34, 9), P(x0, y + 34, 9)];
+      s += `<path d="${poly(quad)}" fill="url(#panel)"/>`;
+      let grid = '';
+      for (let x = x0 + 14; x < x1; x += 14) grid += seg(P(x, y, 28), P(x, y + 34, 9));
+      grid += seg(P(x0, y + 17, 18.5), P(x1, y + 17, 18.5));
+      s += `<path d="${grid}" stroke="#9fb3d6" stroke-opacity=".22" stroke-width=".8"/>`;
+      s += `<path d="${poly(quad)}" fill="none" stroke="#dfe7f2" stroke-opacity=".55" stroke-width="1"/>`;
+    });
+    // inverter station
+    [[720, 340, 30, 24, 28]].forEach(([x, y, w, d, h]) => {
+      const x1 = x + w, y1 = y + d;
+      s += `<path d="${poly([P(x, y1, 0), P(x1, y1, 0), P(x1, y1, h), P(x, y1, h)])}" fill="#dedcd4"/><path d="${poly([P(x1, y, 0), P(x1, y1, 0), P(x1, y1, h), P(x1, y, h)])}" fill="#a9a79f"/><path d="${poly([P(x, y, h), P(x1, y, h), P(x1, y1, h), P(x, y1, h)])}" fill="#f1efe9"/>`;
+    });
+
+    s += `<g filter="url(#bokeh)">
+      <ellipse cx="110" cy="660" rx="270" ry="240" fill="url(#leaf)"/>
+      <ellipse cx="380" cy="820" rx="230" ry="170" fill="#6d7d1f"/>
+      <ellipse cx="40" cy="300" rx="190" ry="230" fill="url(#leaf)"/>
+      <ellipse cx="330" cy="480" rx="130" ry="120" fill="#c2c252" opacity=".85"/>
+      <ellipse cx="1600" cy="880" rx="200" ry="150" fill="#4f5f16"/>
+    </g>`;
+    svg.innerHTML = s;
+  }
+
+  /* =========================================================
+     LINE-ART DRAWINGS — one per portfolio line
+     ========================================================= */
+  const O = { x: 0, y: 0, s: 1 };
+  const ellipseOnX = (x, cy, cz, r, n = 28) => { const pts = []; for (let i = 0; i <= n; i++) { const t = i / n * Math.PI * 2; pts.push(iso(x, cy + r * Math.cos(t), cz + r * Math.sin(t), O)); } return poly(pts, false); };
+
+  function drawHydro(add) {
+    // intake high on the slope, penstock down to the powerhouse, river out
+    boxEdges(-30, -20, 150, 40, 50, 22, O).forEach(p => add(p));
+    const pipe = [], pipe2 = [], ground = [];
+    for (let x = 10; x <= 300; x += 10) {
+      const z = 150 - (x - 10) / 290 * 120;
+      pipe.push(iso(x, 0, z + 10, O)); pipe2.push(iso(x, 12, z + 10, O)); ground.push(iso(x, 40, z - 10, O));
+    }
+    add(poly(pipe, false)); add(poly(pipe2, false)); add(poly(ground, false), 'soft');
+    for (let x = 40; x < 300; x += 40) { const z = 150 - (x - 10) / 290 * 120; add(seg(iso(x, 6, z + 4, O), iso(x, 6, z - 12, O)), 'soft'); }
+    boxEdges(300, -20, 0, 90, 70, 64, O).forEach(p => add(p));
+    add(ellipseOnX(390, 15, 30, 18)); add(ellipseOnX(390, 15, 30, 7));
+    add(poly([iso(300, -20, 64, O), iso(345, 15, 84, O), iso(390, -20, 64, O)], false), 'soft');
+    for (let k = 0; k < 3; k++) {
+      const pts = []; for (let x = 390; x <= 560; x += 8) pts.push(iso(x, 10 + k * 14 + Math.sin(x / 16 + k) * 5, 0, O));
+      add(poly(pts, false), k ? 'soft' : undefined);
+    }
+  }
+
+  function drawSolar(add) {
+    for (let r = 0; r < 5; r++) {
+      const y = r * 64, x0 = 0, x1 = 360;
+      add(poly([iso(x0, y, 30, O), iso(x1, y, 30, O), iso(x1, y + 34, 10, O), iso(x0, y + 34, 10, O)]));
+      for (let x = 20; x < x1; x += 20) add(seg(iso(x, y, 30, O), iso(x, y + 34, 10, O)), 'soft');
+      add(seg(iso(x0, y + 17, 20, O), iso(x1, y + 17, 20, O)), 'soft');
+      for (let x = 30; x < x1; x += 90) { add(seg(iso(x, y + 2, 29, O), iso(x, y + 2, 0, O))); add(seg(iso(x, y + 32, 11, O), iso(x, y + 32, 0, O))); }
+    }
+    boxEdges(390, 110, 0, 36, 30, 34, O).forEach(p => add(p));
+  }
+
+  function drawWind(add, addCircle) {
+    const turbine = (x, base, h, rot) => {
+      add(`M${x - 5} ${base}L${x - 1.8} ${base - h}M${x + 5} ${base}L${x + 1.8} ${base - h}`);
+      add(`M${x - 5} ${base - h - 5}h16v10h-16z`);
+      addCircle(x, base - h, 3.5);
+      for (let k = 0; k < 3; k++) {
+        const a = rot + k * Math.PI * 2 / 3, L = h * .62, c = Math.cos(a), s = Math.sin(a), nx = -s, ny = c;
+        const tip = [x + c * L, base - h + s * L], mid = [x + c * L * .3 + nx * 6, base - h + s * L * .3 + ny * 6];
+        add(`M${f(x + c * 4)} ${f(base - h + s * 4)}Q${f(mid[0])} ${f(mid[1])} ${f(tip[0])} ${f(tip[1])}L${f(x + c * 4 - nx * 1.5)} ${f(base - h + s * 4 - ny * 1.5)}`);
+      }
+    };
+    turbine(-170, 120, 150, -1.2); turbine(10, 120, 200, -0.5); turbine(190, 120, 120, 0.4);
+    add('M-300 120H300'); add('M-280 132H260', 'soft'); add('M-250 144H220', 'soft');
+  }
+
+  function drawMonitor(add, addCircle) {
+    add('M-190 -120H150Q160 -120 160 -110V80Q160 90 150 90H-190Q-200 90 -200 80V-110Q-200 -120 -190 -120Z');
+    add('M-180 -100H140V70H-180Z', 'soft');
+    add('M-40 90L-50 130H10L0 90M-80 130H40');
+    add('M-160 40L-120 10L-80 25L-40 -30L0 -10L40 -60L80 -40L120 -80');
+    for (let i = 0; i < 8; i++) add(`M${-160 + i * 38} 60V${60 - 10 - (i * 37 % 30)}`, 'soft');
+    add('M-160 -80H-60M-160 -64H-100', 'soft');
+    add('M200 -40h60v40h-60zM260 -30l24 -12v44l-24 -12'); addCircle(230, -20, 10);
+    add('M216 -70q14 -14 28 0M206 -82q24 -24 48 0', 'soft');
+  }
+
+  function drawVineyard(add) {
+    for (let r = 0; r < 7; r++) {
+      const y = r * 42, x1 = 380;
+      for (let x = 0; x <= x1; x += 47.5) add(seg(iso(x, y, 0, O), iso(x, y, 48, O)));
+      add(seg(iso(0, y, 26, O), iso(x1, y, 26, O)), 'soft');
+      add(seg(iso(0, y, 44, O), iso(x1, y, 44, O)), 'soft');
+      const pts = []; for (let x = 0; x <= x1; x += 6) pts.push(iso(x, y, 34 + Math.sin(x / 9 + r) * 6 + Math.sin(x / 3.1) * 2, O));
+      add(poly(pts, false));
+    }
+  }
+
+  function drawOrchard(add, addCircle) {
+    for (let r = 0; r < 5; r++) for (let c = 0; c < 7; c++) {
+      const x = c * 56, y = r * 64 + (c % 2) * 6;
+      add(seg(iso(x, y, 0, O), iso(x, y, 26, O)));
+      const [cx, cy] = iso(x, y, 44, O);
+      addCircle(cx, cy, 17);
+      addCircle(cx - 5, cy - 4, 7, 'soft');
+    }
+    boxEdges(400, 120, 0, 40, 30, 22, O).forEach(p => add(p));
+    boxEdges(400, 160, 0, 40, 30, 22, O).forEach(p => add(p));
+  }
+
+  function drawRealEstate(add) {
+    const house = (x0, y0, w, d, h, rh) => {
+      const x1 = x0 + w, y1 = y0 + d, ym = y0 + d / 2, P = (x, y, z) => iso(x, y, z, O);
+      add(poly([P(x1, y0, h), P(x1, y0, 0), P(x1, y1, 0), P(x0, y1, 0), P(x0, y1, h)], false));
+      add(seg(P(x1, y1, 0), P(x1, y1, h)));
+      add(poly([P(x0, y1, h), P(x1, y1, h), P(x1, ym, h + rh), P(x0, ym, h + rh), P(x0, y1, h)], false));
+      add(poly([P(x1, y1, h), P(x1, ym, h + rh), P(x1, y0, h)], false));
+      add(seg(P(x0, ym, h + rh), P(x0, y0 + 6, h + 4)), 'soft');
+      for (let wx = x0 + 10; wx < x1 - 14; wx += 22) add(poly([P(wx, y1, 12), P(wx + 12, y1, 12), P(wx + 12, y1, 28), P(wx, y1, 28)]), 'soft');
+      add(poly([P(x1, y0 + 12, 0), P(x1, y0 + 12, 24), P(x1, y0 + 26, 24), P(x1, y0 + 26, 0)], false));
+    };
+    for (let i = 0; i < 3; i++) house(i * 110, 0, 80, 60, 44, 26);
+    for (let i = 0; i < 3; i++) house(i * 110 + 30, 120, 80, 60, 44, 26);
+    // apartment building
+    boxEdges(-150, 40, 0, 90, 90, 150, O).forEach(p => add(p));
+    for (let z = 20; z < 150; z += 26) for (let x = -140; x < -70; x += 20) add(poly([iso(x, 130, z, O), iso(x + 10, 130, z, O), iso(x + 10, 130, z + 12, O), iso(x, 130, z + 12, O)]), 'soft');
+  }
+
+  const STEPS = [
+    { tag: 'Renewable energy', t: 'Hydro', lead: 'Mountain rivers, put to work.', body: 'Four small run-of-river plants deliver affordable power with no greenhouse gases, in a country whose hydro potential is still far from fully used.',
+      facts: [['Bistra', '0.759 MW'], ['Vad', '0.895 MW'], ['Anieș', '2.210 MW'], ['Crișul Negru', '0.990 MW']], draw: drawHydro },
+    { tag: 'Renewable energy', t: 'Solar', lead: 'Sunlight, harvested at scale.', body: 'Over half of Romania receives 1,100–1,300 kWh/m² of sunlight a year. Our four parks turn that into clean power.',
+      facts: [['Valea lui Cati', '3 MW · 30 ha'], ['Moldovenești', '3 MW · 8.86 ha'], ['Chiribiș', '5 MW · 15 ha'], ['Salard', '4 MW · 8.2 ha']], draw: drawSolar },
+    { tag: 'Renewable energy', t: 'Wind', lead: 'Parks that keep growing.', body: 'We developed the Negrești park in 2007 and still manage it, growing it with EU funding. Ruginoasa is next.',
+      facts: [['Negrești, Vaslui', 'since 2007'], ['EU grants (2012)', '€19M'], ['Ruginoasa, Iași', 'in development']], draw: drawWind },
+    { tag: 'Operations', t: 'Monitoring', lead: 'Every site, in real time.', body: 'An integrated ERP with a dedicated module shows live production and on-site cameras for every energy project, with full transparency for our partners.',
+      facts: [['Platform', 'bcManager ERP'], ['Production data', 'real time'], ['Site cameras', 'live']], draw: drawMonitor },
+    { tag: 'Agriculture', t: 'Vineyard', lead: 'Wine from Turda’s hills.', body: '70 hectares near the Turda Salt Mine, planted since 2011 with eight varieties, including the Romanian Fetească Neagră.',
+      facts: [['Area', '70 ha'], ['Planted', 'since 2011'], ['Varieties', '8']], draw: drawVineyard },
+    { tag: 'Agriculture', t: 'Orchard', lead: 'Organic apples from Sălaj.', body: 'An old orchard in Dragu, certified organic in 2009 and replanted as an intensive plantation after three years of conversion.',
+      facts: [['Location', 'Dragu, Sălaj'], ['Organic since', '2009'], ['Varieties', 'Remo, Florina +3']], draw: drawOrchard },
+    { tag: 'Real estate', t: 'Homes', lead: 'Places to live around Cluj.', body: 'Neighbourhoods of houses and villas, plus land and buildings held for future mixed-use projects.',
+      facts: [['Arcada', 'houses & villas'], ['Ana Aslan', '11 houses + 5 apts'], ['Fimaro', 'mixed-use potential']], draw: drawRealEstate },
+  ];
+  const N = STEPS.length;
+
+  const buildSvg = document.getElementById('buildSvg');
+  const labelsEl = document.getElementById('labels');
+  const railEl = document.getElementById('rail');
+  const arts = [], labels = [], railBtns = [];
+
+  STEPS.forEach((step, i) => {
+    const outer = document.createElementNS(NS, 'g');
+    outer.setAttribute('class', 'art');
+    const inner = document.createElementNS(NS, 'g');
+    outer.appendChild(inner);
+    buildSvg.appendChild(outer);
+    const add = (d, cls) => {
+      const p = document.createElementNS(NS, 'path');
+      p.setAttribute('d', d); p.setAttribute('pathLength', '1');
+      if (cls) p.setAttribute('class', cls);
+      inner.appendChild(p);
+    };
+    const addCircle = (cx, cy, r, cls) => {
+      const c = document.createElementNS(NS, 'circle');
+      c.setAttribute('cx', f(cx)); c.setAttribute('cy', f(cy)); c.setAttribute('r', r); c.setAttribute('pathLength', '1');
+      if (cls) c.setAttribute('class', cls);
+      inner.appendChild(c);
+    };
+    step.draw(add, addCircle);
+    const bb = inner.getBBox();
+    const k = Math.min(420 / bb.width, 300 / bb.height);
+    inner.setAttribute('transform', `scale(${k}) translate(${-(bb.x + bb.width / 2)} ${-(bb.y + bb.height / 2)})`);
+    inner.setAttribute('stroke-width', (0.95 / k).toFixed(3));
+    arts.push(outer);
+
+    const side = i % 2 ? 'right' : 'left';
+    const lab = document.createElement('div');
+    lab.className = `label label--${side}`;
+    const num = String(i + 1).padStart(2, '0');
+    lab.innerHTML = `<p class="tag">${step.tag}</p><h3>${num}. ${step.t}</h3><p class="lead">${step.lead}</p><p class="body">${step.body}</p>` +
+      `<ul class="facts">${step.facts.map(([a, b]) => `<li><span>${a}</span><b>${b}</b></li>`).join('')}</ul>`;
+    labelsEl.appendChild(lab);
+    labels.push({ el: lab, side });
+
+    const li = document.createElement('li');
+    const b = document.createElement('button');
+    b.type = 'button'; b.textContent = `${num} ${step.t}`;
+    b.addEventListener('click', () => scrollToStep(i));
+    li.appendChild(b); railEl.appendChild(li); railBtns.push(b);
+  });
+
+  const build = document.getElementById('build');
+  build.style.height = `${N * 90 + 60}vh`;
+
+  const revealText = document.getElementById('revealText');
+  revealText.innerHTML = revealText.textContent.trim().split(/\s+/).map(w => `<span class="w">${w}</span>`).join(' ');
+  const words = [...revealText.querySelectorAll('.w')];
+  const reveal = document.getElementById('reveal');
+
+  const heroMedia = document.getElementById('heroMedia');
+  const heroContent = document.querySelector('.hero__content');
+  const LEAD = 0.6, HOLD = 0.3;
+
+  function buildProgress() {
+    const r = build.getBoundingClientRect(), vh = innerHeight;
+    const t = clamp((LEAD * vh - r.top) / (r.height - vh + LEAD * vh));
+    return Math.min(-LEAD + t * (N - 1 + LEAD + HOLD), N - 1);
+  }
+  function scrollToStep(i) {
+    const vh = innerHeight, top = build.getBoundingClientRect().top + scrollY;
+    const t = (i + LEAD) / (N - 1 + LEAD + HOLD);
+    scrollTo({ top: top - LEAD * vh + t * (build.offsetHeight - vh + LEAD * vh) + 2, behavior: reduce ? 'auto' : 'smooth' });
+  }
+
+  let ticking = false;
+  function update() {
+    ticking = false;
+    const y = scrollY, vh = innerHeight, mobile = innerWidth <= 760;
+    if (y < vh * 1.2) {
+      heroMedia.style.translate = `0 ${y * 0.35}px`;
+      heroContent.style.opacity = clamp(1 - y / (vh * 0.55));
+    }
+    const rr = reveal.getBoundingClientRect();
+    const rp = clamp((vh * 0.55 - rr.top) / (rr.height - vh * 0.45));
+    const k = rp * words.length * 1.1;
+    words.forEach((w, i) => { const o = (0.2 + 0.8 * clamp(k - i)).toFixed(2); if (w.style.opacity !== o) w.style.opacity = o; });
+
+    const P = buildProgress();
+    arts.forEach((g, i) => {
+      const d = P - i;
+      const draw = clamp((d + 0.6) / 0.5);
+      const op = d < 0 ? clamp((d + 0.65) / 0.35) : clamp(1 - (d - 0.2) / 0.4);
+      const sc = d < 0 ? 1 + -d * 0.3 : 1 - d * 0.45;
+      const tx = mobile ? 0 : (labels[i].side === 'left' ? 80 : -80);
+      g.style.opacity = op.toFixed(3);
+      g.style.setProperty('--draw', draw.toFixed(3));
+      g.setAttribute('transform', `translate(${tx} 0) scale(${sc.toFixed(4)})`);
+      g.style.visibility = op <= 0 ? 'hidden' : 'visible';
+    });
+    labels.forEach(({ el }, i) => {
+      const d = P - i;
+      const op = clamp(1 - Math.abs(d) * (mobile ? 2.2 : 1.3));
+      el.style.opacity = op.toFixed(3);
+      el.style.translate = mobile ? `0 ${(-d * 24).toFixed(1)}px` : `0 calc(-50% + ${(-d * 36).toFixed(1)}px)`;
+      el.style.visibility = op <= 0 ? 'hidden' : 'visible';
+    });
+    const active = clamp(Math.round(P), 0, N - 1);
+    railBtns.forEach((b, i) => b.classList.toggle('is-active', i === active));
+  }
+  const onScroll = () => { if (!ticking) { ticking = true; requestAnimationFrame(update); } };
+  addEventListener('scroll', onScroll, { passive: true });
+  addEventListener('resize', onScroll);
+
+  buildHero();
+  update();
+  const loader = document.getElementById('loader');
+  const count = document.getElementById('count');
+  const finish = () => { loader.classList.add('is-done'); document.body.classList.remove('loading'); document.body.classList.add('ready'); };
+  if (reduce) { count.textContent = '100%'; finish(); return; }
+  setTimeout(() => {
+    loader.classList.add('is-see');
+    document.body.classList.add('push');
+    const t0 = performance.now(), dur = 1900;
+    const tick = now => {
+      const t = clamp((now - t0) / dur);
+      count.textContent = Math.round((1 - Math.pow(1 - t, 2.2)) * 100) + '%';
+      if (t < 1) requestAnimationFrame(tick); else setTimeout(finish, 380);
+    };
+    requestAnimationFrame(tick);
+  }, 450);
+})();
+</script>
+</body>
+</html>
