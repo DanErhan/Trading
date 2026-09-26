@@ -1,0 +1,701 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Halden Energy — Multi-day storage</title>
+<meta name="description" content="Scroll-driven product story: from raw iron to a grid-scale storage system.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* ---------- Design tokens (swap these to rebrand) ---------- */
+  :root {
+    --ink: #0d0d07;
+    --paper: #f5f4f0;
+    --muted: #9fa1a9;
+    --slate: #6a768e;
+    --olive: #403e31;
+    --deep: #1d0502;        /* maroon "blueprint" background */
+    --accent: #ff4f1f;      /* technical orange */
+    --font: "Inter Tight", "Helvetica Neue", Arial, system-ui, sans-serif;
+    --gutter: clamp(16px, 3.5vw, 56px);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { background: var(--deep); }
+  body {
+    font-family: var(--font);
+    color: var(--paper);
+    background: var(--deep);
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  body.loading { overflow: hidden; }
+  a { color: inherit; text-decoration: none; }
+  button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+
+  /* ---------- Loader ---------- */
+  .loader {
+    position: fixed; inset: 0; z-index: 100;
+    display: grid; place-items: center;
+    background: var(--deep);
+    transition: background-color .9s ease, opacity .6s ease;
+  }
+  .loader.is-see { background-color: rgba(18, 12, 4, .38); }
+  .loader.is-done { opacity: 0; pointer-events: none; }
+  .loader__mark {
+    display: flex; align-items: center; gap: 22px;
+    opacity: 0; transition: opacity .6s ease;
+  }
+  .loader.is-see .loader__mark { opacity: 1; }
+  .loader__count {
+    font-size: clamp(28px, 3vw, 44px); font-weight: 400;
+    letter-spacing: -.02em; font-variant-numeric: tabular-nums; min-width: 3.4em;
+  }
+
+  /* ---------- Logo ---------- */
+  .logo { display: inline-flex; align-items: center; gap: 8px; line-height: .95; font-size: 13px; font-weight: 500; letter-spacing: -.01em; }
+  .logo svg { width: 26px; height: 26px; flex: none; }
+  .loader .logo { font-size: 17px; }
+  .loader .logo svg { width: 34px; height: 34px; }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    position: relative; height: 100vh; height: 100svh; min-height: 560px;
+    overflow: hidden; background: #2b4013; isolation: isolate;
+  }
+  .hero__media {
+    position: absolute; inset: -3%;
+    transform-origin: 58% 42%;
+    scale: 1;
+    transition: scale 5s cubic-bezier(.2, .6, .2, 1);
+    will-change: scale, translate;
+  }
+  body.push .hero__media { scale: 1.12; }
+  .hero__media svg { width: 100%; height: 100%; display: block; }
+  .hero__shade {
+    position: absolute; inset: 0; pointer-events: none;
+    background:
+      linear-gradient(to top, rgba(10, 12, 4, .72) 0%, rgba(10, 12, 4, .28) 36%, rgba(10, 12, 4, 0) 62%),
+      linear-gradient(to bottom, rgba(10, 12, 4, .22), rgba(10, 12, 4, 0) 22%);
+  }
+
+  .nav {
+    position: absolute; z-index: 5; top: 20px; left: 50%;
+    display: flex; gap: 5px;
+    translate: -50% -16px; opacity: 0;
+    transition: translate .8s cubic-bezier(.2, .7, .2, 1) .15s, opacity .8s ease .15s;
+  }
+  body.ready .nav { translate: -50% 0; opacity: 1; }
+  .pill {
+    display: flex; align-items: center; height: 44px; padding: 0 16px;
+    background: #fff; color: var(--ink); border-radius: 6px;
+    font-size: 15px; letter-spacing: -.01em; white-space: nowrap;
+  }
+  .pill--links { gap: 22px; padding: 0 20px; }
+  .pill--links a { display: inline-flex; align-items: center; gap: 6px; transition: color .2s; }
+  .pill--links a:hover, .pill--links a.is-active { color: var(--accent); }
+  .pill--cta { transition: background .2s, color .2s; }
+  .pill--cta:hover { background: var(--accent); color: #fff; }
+  .pill--menu { display: none; }
+  .caret { width: 9px; height: 9px; }
+
+  .hero__content {
+    position: absolute; z-index: 4; left: var(--gutter); right: var(--gutter); bottom: 6vh;
+  }
+  .hero__title {
+    font-weight: 500; letter-spacing: -.035em; line-height: .98;
+    font-size: clamp(42px, 6.3vw, 104px);
+  }
+  .hero__title .line { display: block; overflow: hidden; padding-bottom: .06em; }
+  .hero__title .line > span {
+    display: block; translate: 0 108%;
+    transition: translate 1.1s cubic-bezier(.2, .75, .15, 1);
+  }
+  .hero__title .line:nth-child(2) > span { transition-delay: .09s; }
+  body.ready .hero__title .line > span { translate: 0 0; }
+
+  .hero__bottom {
+    margin-top: 4vh; display: flex; align-items: flex-end; justify-content: space-between; gap: 32px;
+    opacity: 0; translate: 0 14px;
+    transition: opacity .9s ease .35s, translate .9s cubic-bezier(.2, .7, .2, 1) .35s;
+  }
+  body.ready .hero__bottom { opacity: 1; translate: 0 0; }
+  .hero__bottom p { max-width: 600px; font-size: clamp(14px, 1.1vw, 17px); line-height: 1.4; }
+  .hero__actions { display: flex; gap: 14px; flex: none; }
+  .btn {
+    display: inline-flex; align-items: center; height: 48px; padding: 0 22px;
+    border-radius: 3px; font-size: 16px; letter-spacing: -.01em; transition: filter .2s, background .2s;
+  }
+  .btn--accent { background: var(--accent); color: #fff; }
+  .btn--accent:hover { filter: brightness(1.08); }
+  .btn--ghost { background: rgba(38, 38, 34, .72); border: 1px solid rgba(255, 255, 255, .2); color: #fff; backdrop-filter: blur(6px); }
+  .btn--ghost:hover { background: rgba(38, 38, 34, .9); }
+
+  /* ---------- Word-by-word reveal ---------- */
+  .reveal { position: relative; height: 240vh; }
+  .reveal__sticky {
+    position: sticky; top: 0; height: 100vh;
+    display: flex; align-items: center; padding: 0 var(--gutter);
+  }
+  .reveal__text {
+    max-width: 1120px; font-weight: 500; letter-spacing: -.015em; line-height: 1.32;
+    font-size: clamp(22px, 2.6vw, 42px);
+  }
+  .reveal__text .w { opacity: .2; transition: opacity .15s linear; }
+
+  /* ---------- Pinned build-up sequence ---------- */
+  .build { position: relative; }
+  .build__sticky {
+    position: sticky; top: 0; height: 100vh; overflow: hidden;
+    /* faint technical column grid */
+    background-image: repeating-linear-gradient(90deg, rgba(255, 79, 31, .045) 0 1px, transparent 1px calc(100% / 12));
+  }
+  .build__stage { position: absolute; inset: 0; display: grid; place-items: center; }
+  .build__svg {
+    width: min(64vw, 900px); height: auto; overflow: visible;
+    filter: drop-shadow(0 0 5px rgba(255, 79, 31, .35));
+  }
+  .art { transform-box: view-box; }
+  .art path, .art circle, .art rect, .art line {
+    fill: none; stroke: var(--accent);
+    stroke-linecap: round; stroke-linejoin: round;
+    stroke-dasharray: 1 1;
+    stroke-dashoffset: calc(1 - var(--draw, 1));
+  }
+  .art .soft { stroke-opacity: .45; }
+
+  .label {
+    position: absolute; top: 50%; width: 270px;
+    will-change: opacity, translate;
+  }
+  .label--left { left: var(--gutter); }
+  .label--right { left: calc(100% - var(--gutter) - 270px); }
+  .label h3 { font-size: clamp(28px, 2.7vw, 44px); font-weight: 500; letter-spacing: -.025em; line-height: 1.02; }
+  .label .lead { margin-top: 22px; font-size: 13px; font-weight: 600; }
+  .label .body { margin-top: 8px; font-size: 12.5px; line-height: 1.45; color: rgba(245, 244, 240, .62); max-width: 230px; }
+
+  .rail {
+    position: absolute; left: 50%; bottom: 4.5vh; translate: -50% 0;
+    display: flex; gap: 6px; list-style: none;
+  }
+  .rail button {
+    display: flex; flex-direction: column; gap: 8px; width: 74px; text-align: left;
+    font-size: 11px; letter-spacing: .02em; color: rgba(245, 244, 240, .4); transition: color .3s;
+  }
+  .rail button::before { content: ""; height: 2px; background: currentColor; opacity: .5; transition: opacity .3s; }
+  .rail button.is-active { color: var(--accent); }
+  .rail button.is-active::before { opacity: 1; }
+
+  /* ---------- Closing ---------- */
+  .closing { background: var(--paper); color: var(--ink); padding: 18vh var(--gutter) 10vh; }
+  .closing h2 { font-weight: 500; letter-spacing: -.035em; line-height: .98; font-size: clamp(40px, 6vw, 100px); max-width: 12ch; }
+  .stats { margin-top: 12vh; display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; }
+  .stat { border-top: 1px solid rgba(13, 13, 7, .2); padding-top: 18px; }
+  .stat b { display: block; font-size: clamp(36px, 4vw, 64px); font-weight: 500; letter-spacing: -.03em; }
+  .stat span { display: block; margin-top: 6px; color: var(--slate); font-size: 14px; }
+  .closing__cta { margin-top: 10vh; display: flex; gap: 14px; flex-wrap: wrap; }
+  .closing__cta .btn--ghost { background: var(--ink); border-color: var(--ink); }
+  .footer {
+    background: var(--paper); color: var(--slate); padding: 28px var(--gutter);
+    display: flex; justify-content: space-between; gap: 16px; font-size: 13px;
+    border-top: 1px solid rgba(13, 13, 7, .1);
+  }
+  .footer .logo { color: var(--ink); }
+
+  /* ---------- Small screens ---------- */
+  @media (max-width: 980px) {
+    .pill--links { display: none; }
+    .pill--menu { display: flex; }
+  }
+  @media (max-width: 760px) {
+    .hero__bottom { flex-direction: column; align-items: flex-start; }
+    .build__svg { width: 94vw; margin-top: 18vh; }
+    .label, .label--left, .label--right { left: 16px; right: 16px; width: auto; top: 12vh; }
+    .rail button { width: 40px; font-size: 0; }
+    .stats { grid-template-columns: 1fr; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hero__media, .hero__title .line > span, .hero__bottom, .nav { transition: none !important; }
+  }
+</style>
+</head>
+<body class="loading">
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="mark" viewBox="0 0 26 26">
+    <rect x="1" y="1" width="24" height="24" rx="3" fill="currentColor"/>
+    <rect x="5" y="6" width="16" height="3" fill="var(--mark-cut, #fff)"/>
+    <rect x="9" y="11.5" width="12" height="3" fill="var(--mark-cut, #fff)"/>
+    <rect x="5" y="17" width="16" height="3" fill="var(--mark-cut, #fff)"/>
+  </symbol>
+  <symbol id="caret" viewBox="0 0 10 10"><path d="M1.5 3.5 5 7l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.4"/></symbol>
+</svg>
+
+<!-- 1. Loader -->
+<div class="loader" id="loader" aria-hidden="true">
+  <div class="loader__mark">
+    <span class="logo" style="--mark-cut: var(--deep)"><svg><use href="#mark"/></svg><span>halden<br>energy</span></span>
+    <span class="loader__count" id="count">0%</span>
+  </div>
+</div>
+
+<!-- 2. Hero -->
+<header class="hero" id="hero">
+  <div class="hero__media" id="heroMedia"><svg id="heroScene" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true"></svg></div>
+  <div class="hero__shade"></div>
+
+  <nav class="nav" aria-label="Primary">
+    <a class="pill" href="#"><span class="logo"><svg><use href="#mark"/></svg><span>halden<br>energy</span></span></a>
+    <div class="pill pill--links">
+      <a href="#">about <svg class="caret"><use href="#caret"/></svg></a>
+      <a href="#build" class="is-active">battery technology</a>
+      <a href="#">grid modeling</a>
+      <a href="#">careers</a>
+      <a href="#">resources <svg class="caret"><use href="#caret"/></svg></a>
+      <a href="#">contact</a>
+    </div>
+    <a class="pill pill--cta" href="#contact">talk to team</a>
+    <button class="pill pill--menu" type="button">menu</button>
+  </nav>
+
+  <div class="hero__content">
+    <h1 class="hero__title">
+      <span class="line"><span>Storage that outlasts</span></span>
+      <span class="line"><span>the weather.</span></span>
+    </h1>
+    <div class="hero__bottom">
+      <p>Halden's iron-based battery holds clean power for days, not hours, so utilities can keep the lights on through storms, heat waves and long, windless weeks.</p>
+      <div class="hero__actions">
+        <a class="btn btn--accent" href="#contact">talk to team</a>
+        <a class="btn btn--ghost" href="#">view projects</a>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- 3. Word-by-word reveal -->
+  <section class="reveal" id="reveal">
+    <div class="reveal__sticky">
+      <p class="reveal__text" id="revealText">Our battery is built from iron, one of the most common materials on the planet. It stores energy by letting iron rust and releases it by reversing the rust, a simple reaction that turns cheap metal into days of dependable power for the grid.</p>
+    </div>
+  </section>
+
+  <!-- 4. Pinned build-up sequence -->
+  <section class="build" id="build" aria-label="How the system is built">
+    <div class="build__sticky">
+      <div class="build__stage"><svg class="build__svg" id="buildSvg" viewBox="-320 -210 640 420" aria-hidden="true"></svg></div>
+      <div id="labels"></div>
+      <ol class="rail" id="rail"></ol>
+    </div>
+  </section>
+
+  <!-- 5. Closing -->
+  <section class="closing" id="contact">
+    <h2>Days of power, not hours.</h2>
+    <div class="stats">
+      <div class="stat"><b>100 h</b><span>of continuous discharge per system</span></div>
+      <div class="stat"><b>7</b><span>layers, from a single pellet to a power plant</span></div>
+      <div class="stat"><b>Iron</b><span>at the core: abundant, safe and low-cost</span></div>
+    </div>
+    <div class="closing__cta">
+      <a class="btn btn--accent" href="#">talk to team</a>
+      <a class="btn btn--ghost" href="#">view projects</a>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <span class="logo"><svg><use href="#mark"/></svg><span>halden<br>energy</span></span>
+  <span>Concept page. Placeholder brand and copy.</span>
+</footer>
+
+<script>
+(() => {
+  const NS = 'http://www.w3.org/2000/svg';
+  const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---------- Isometric helpers (shared by hero + line art) ---------- */
+  const C30 = Math.cos(Math.PI / 6);
+  const iso = (x, y, z, o) => [o.x + (x - y) * C30 * o.s, o.y + (x + y) * 0.5 * o.s - z * o.s];
+  const f = n => n.toFixed(1);
+  const poly = (pts, close = true) => 'M' + pts.map(p => f(p[0]) + ' ' + f(p[1])).join('L') + (close ? 'Z' : '');
+  const seg = (a, b) => `M${f(a[0])} ${f(a[1])}L${f(b[0])} ${f(b[1])}`;
+
+  // Visible wireframe edges of a box (top face + the two faces toward the viewer)
+  function boxEdges(x0, y0, z0, w, d, h, o) {
+    const x1 = x0 + w, y1 = y0 + d, z1 = z0 + h, P = (x, y, z) => iso(x, y, z, o);
+    return [
+      poly([P(x0, y0, z1), P(x1, y0, z1), P(x1, y1, z1), P(x0, y1, z1)]),
+      poly([P(x1, y0, z1), P(x1, y0, z0), P(x1, y1, z0), P(x0, y1, z0), P(x0, y1, z1)], false),
+      seg(P(x1, y1, z1), P(x1, y1, z0)),
+    ];
+  }
+  // Vertical ribs on the +y face (runs along x) and the +x face (runs along y)
+  function ribsY(x0, x1, y, z0, z1, step, o) {
+    const out = [];
+    for (let x = x0 + step; x < x1 - step / 2; x += step) out.push(seg(iso(x, y, z0, o), iso(x, y, z1, o)));
+    return out;
+  }
+  function ribsX(y0, y1, x, z0, z1, step, o) {
+    const out = [];
+    for (let y = y0 + step; y < y1 - step / 2; y += step) out.push(seg(iso(x, y, z0, o), iso(x, y, z1, o)));
+    return out;
+  }
+
+  /* =========================================================
+     HERO SCENE — aerial battery yard (placeholder for a photo/video)
+     ========================================================= */
+  function buildHero() {
+    const svg = document.getElementById('heroScene');
+    const o = { x: 830, y: 110, s: 1 };
+    const P = (x, y, z) => iso(x, y, z, o);
+    let s = `
+      <defs>
+        <linearGradient id="grass" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#58712a"/><stop offset=".5" stop-color="#3f5a1b"/><stop offset="1" stop-color="#23340d"/>
+        </linearGradient>
+        <filter id="grain" x="0" y="0" width="100%" height="100%">
+          <feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" stitchTiles="stitch"/>
+          <feColorMatrix type="saturate" values="0"/>
+          <feComposite in2="SourceGraphic" operator="in"/>
+        </filter>
+        <filter id="patches" x="0" y="0" width="100%" height="100%">
+          <feTurbulence type="fractalNoise" baseFrequency=".005" numOctaves="3" seed="7"/>
+          <feColorMatrix type="matrix" values="0 0 0 0 .78  0 0 0 0 .82  0 0 0 0 .28  1.6 0 0 0 -.62"/>
+          <feComposite in2="SourceGraphic" operator="in"/>
+        </filter>
+        <filter id="soft"><feGaussianBlur stdDeviation="3"/></filter>
+        <filter id="bokeh" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="26"/></filter>
+        <radialGradient id="leaf" cx=".4" cy=".35" r=".7">
+          <stop offset="0" stop-color="#c9c95a"/><stop offset=".6" stop-color="#8d9a2c"/><stop offset="1" stop-color="#4f5f16"/>
+        </radialGradient>
+      </defs>
+      <rect width="1600" height="900" fill="url(#grass)"/>
+      <rect width="1600" height="900" fill="#000" filter="url(#patches)" opacity=".45"/>
+      <rect width="1600" height="900" fill="#000" filter="url(#grain)" opacity=".22" style="mix-blend-mode:overlay"/>`;
+
+    // background tree clusters
+    const trees = [[1380, 40, 90], [1480, 120, 80], [1540, 10, 70], [1290, -10, 70], [120, 40, 90], [30, 140, 80], [240, -20, 70], [1560, 330, 60]];
+    trees.forEach(([x, y, r]) => {
+      s += `<ellipse cx="${x + 18}" cy="${y + 24}" rx="${r}" ry="${r * .8}" fill="#16230a" opacity=".55" filter="url(#soft)"/>`;
+      s += `<circle cx="${x}" cy="${y}" r="${r}" fill="#35501a"/><circle cx="${x - r * .3}" cy="${y - r * .3}" r="${r * .55}" fill="#4d6b22"/><circle cx="${x + r * .35}" cy="${y - r * .1}" r="${r * .4}" fill="#5c7a28" opacity=".8"/>`;
+    });
+
+    // gravel pad + fence
+    const pad = [P(-60, -60, 0), P(740, -60, 0), P(740, 610, 0), P(-60, 610, 0)];
+    s += `<path d="${poly(pad)}" fill="#7a7870"/>`;
+    s += `<path d="${poly(pad)}" fill="#000" filter="url(#grain)" opacity=".5" style="mix-blend-mode:multiply"/>`;
+    const fence = [P(-80, -80, 0), P(760, -80, 0), P(760, 630, 0), P(-80, 630, 0)];
+    s += `<path d="${poly(fence)}" fill="none" stroke="#1d1f18" stroke-width="1.4" opacity=".7"/>`;
+    for (let x = -80; x <= 760; x += 40) s += `<path d="${seg(P(x, 630, 0), P(x, 630, 16))}" stroke="#1d1f18" stroke-width="1.2" opacity=".6"/>`;
+    for (let y = -80; y <= 630; y += 40) s += `<path d="${seg(P(760, y, 0), P(760, y, 16))}" stroke="#1d1f18" stroke-width="1.2" opacity=".6"/>`;
+    s += `<path d="${poly([P(-80, 630, 16), P(760, 630, 16), P(760, -80, 16)], false)}" fill="none" stroke="#1d1f18" stroke-width="1" opacity=".5"/>`;
+
+    // containers + small equipment boxes
+    const boxes = [
+      { x: 0, y: 0, w: 470, d: 72, h: 78, c: 1 }, { x: 0, y: 115, w: 470, d: 72, h: 78, c: 1 }, { x: 0, y: 230, w: 470, d: 72, h: 78, c: 1 },
+      { x: 170, y: 370, w: 420, d: 72, h: 78, c: 1 }, { x: 170, y: 485, w: 420, d: 72, h: 78, c: 1 },
+      { x: 530, y: 20, w: 46, d: 40, h: 52 }, { x: 530, y: 90, w: 46, d: 40, h: 52 }, { x: 530, y: 160, w: 46, d: 40, h: 52 },
+      { x: 620, y: 260, w: 40, d: 40, h: 60 }, { x: 620, y: 320, w: 40, d: 40, h: 60 },
+    ].sort((a, b) => (a.x + a.w / 2 + a.y + a.d / 2) - (b.x + b.w / 2 + b.y + b.d / 2));
+
+    // shadows (sun from upper-left → cast toward +x)
+    const hull = pts => {
+      pts = pts.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+      const cr = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+      const lo = [], up = [];
+      for (const p of pts) { while (lo.length >= 2 && cr(lo[lo.length - 2], lo[lo.length - 1], p) <= 0) lo.pop(); lo.push(p); }
+      for (const p of pts.reverse()) { while (up.length >= 2 && cr(up[up.length - 2], up[up.length - 1], p) <= 0) up.pop(); up.push(p); }
+      return lo.slice(0, -1).concat(up.slice(0, -1));
+    };
+    boxes.forEach(b => {
+      const k = b.h * 0.95, x1 = b.x + b.w, y1 = b.y + b.d;
+      const foot = [[b.x, b.y], [x1, b.y], [x1, y1], [b.x, y1]];
+      const pts = foot.concat(foot.map(([x, y]) => [x + k, y - k * .25])).map(([x, y]) => P(x, y, 0));
+      s += `<path d="${poly(hull(pts))}" fill="#10120a" opacity=".45" filter="url(#soft)"/>`;
+    });
+
+    boxes.forEach(b => {
+      const { x, y, w, d, h } = b, x1 = x + w, y1 = y + d;
+      const top = [P(x, y, h), P(x1, y, h), P(x1, y1, h), P(x, y1, h)];
+      const fy = [P(x, y1, 0), P(x1, y1, 0), P(x1, y1, h), P(x, y1, h)];
+      const fx = [P(x1, y, 0), P(x1, y1, 0), P(x1, y1, h), P(x1, y, h)];
+      s += `<path d="${poly(fy)}" fill="#dedcd4"/><path d="${poly(fx)}" fill="#a9a79f"/><path d="${poly(top)}" fill="#f1efe9"/>`;
+      let lines = '';
+      if (b.c) {
+        for (let t = x + 9; t < x1 - 4; t += 9) lines += seg(P(t, y1, 4), P(t, y1, h - 4));
+        for (let t = x + 9; t < x1 - 4; t += 9) lines += seg(P(t, y, h), P(t, y1, h));
+        lines += seg(P(x1, y + d / 2, 3), P(x1, y + d / 2, h - 3));
+        for (let t = x + 60; t < x1 - 20; t += 70) lines += poly([P(t, y1, 6), P(t + 34, y1, 6), P(t + 34, y1, h - 6), P(t, y1, h - 6)]);
+      } else {
+        lines += seg(P(x1, y + d / 2, 4), P(x1, y + d / 2, h - 4));
+      }
+      s += `<path d="${lines}" fill="none" stroke="#000" stroke-opacity=".16" stroke-width="1"/>`;
+      s += `<path d="${poly(top)}" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width="1"/>`;
+    });
+
+    // foreground bokeh foliage
+    s += `<g filter="url(#bokeh)">
+      <ellipse cx="110" cy="640" rx="270" ry="240" fill="url(#leaf)"/>
+      <ellipse cx="380" cy="800" rx="230" ry="170" fill="#6d7d1f"/>
+      <ellipse cx="40" cy="290" rx="190" ry="230" fill="url(#leaf)"/>
+      <ellipse cx="330" cy="470" rx="130" ry="120" fill="#b8bd4a" opacity=".85"/>
+      <ellipse cx="560" cy="880" rx="150" ry="90" fill="#58681a"/>
+      <ellipse cx="1600" cy="880" rx="200" ry="150" fill="#4f5f16"/>
+    </g>`;
+    svg.innerHTML = s;
+  }
+
+  /* =========================================================
+     LINE-ART DRAWINGS — one per step (all generated, no assets)
+     ========================================================= */
+  const O = { x: 0, y: 0, s: 1 };
+
+  function drawIron(add, addCircle) {
+    const rows = [22, 20, 17, 14, 10, 6, 3], r = 6.2;
+    let seed = 3; const rnd = () => ((seed = (seed * 9301 + 49297) % 233280) / 233280 - .5);
+    rows.forEach((n, k) => {
+      for (let i = 0; i < n; i++) addCircle((i - (n - 1) / 2) * 12.6 + rnd() * 3, -k * 10.2 + rnd() * 2, r);
+    });
+    [[-160, 6], [150, 5], [-176, 4]].forEach(([x, y]) => addCircle(x, y, r));
+  }
+
+  function drawElectrode(add, addCircle) {
+    const rr = (x, y, w, h, r) => `M${x + r} ${y}H${x + w - r}Q${x + w} ${y} ${x + w} ${y + r}V${y + h - r}Q${x + w} ${y + h} ${x + w - r} ${y + h}H${x + r}Q${x} ${y + h} ${x} ${y + h - r}V${y + r}Q${x} ${y} ${x + r} ${y}Z`;
+    add(rr(-62, -80, 124, 150, 8));
+    add(rr(-46, -62, 92, 108, 12));
+    add(rr(-38, -54, 76, 92, 14), 'soft');
+    add(rr(-11, -128, 22, 50, 4));
+    addCircle(0, -114, 5);
+    add('M-18 -80H18');
+    [[-52, -70], [52, -70], [-52, 60], [52, 60], [-52, -5], [52, -5]].forEach(([x, y]) => addCircle(x, y, 3.4));
+    add(rr(-30, 70, 18, 10, 2)); add(rr(12, 70, 18, 10, 2));
+    for (let j = 0; j < 6; j++) for (let i = 0; i < 6; i++) addCircle(-28 + i * 11.2, -42 + j * 14, 1.2, 'soft');
+  }
+
+  function drawCell(add) {
+    const w = 70, d = 46, h = 170;
+    boxEdges(0, 0, 0, w, d, h, O).forEach(p => add(p));
+    ribsY(0, w, d, 8, h - 8, 5, O).forEach(p => add(p));
+    ribsX(0, d, w, 8, h - 8, 5, O).forEach(p => add(p));
+    [18, h - 18].forEach(z => add(poly([iso(0, d, z, O), iso(w, d, z, O), iso(w, 0, z, O)], false)));
+    [[8, 8], [8, 28], [48, 8], [48, 28]].forEach(([x, y]) => boxEdges(x, y, h, 10, 10, 12, O).forEach(p => add(p)));
+    add(seg(iso(13, 18, h + 12, O), iso(53, 18, h + 12, O)), 'soft');
+  }
+
+  function drawModule(add) {
+    boxEdges(-10, -6, 0, 320, 78, 10, O).forEach(p => add(p));
+    for (let i = 0; i < 8; i++) {
+      const x = i * 38;
+      boxEdges(x, 0, 10, 32, 64, 74, O).forEach(p => add(p));
+      ribsY(x, x + 32, 64, 16, 78, 4, O).forEach(p => add(p, 'soft'));
+    }
+    add(seg(iso(0, 20, 96, O), iso(300, 20, 96, O)));
+    add(seg(iso(0, 44, 96, O), iso(300, 44, 96, O)));
+  }
+
+  function drawEnclosure(add) {
+    const w = 380, d = 82, h = 88;
+    boxEdges(0, 0, 0, w, d, h, O).forEach(p => add(p));
+    ribsY(0, w - 70, d, 6, h - 6, 8, O).forEach(p => add(p, 'soft'));
+    [[w - 64, w - 34], [w - 32, w - 4]].forEach(([a, b]) => add(poly([iso(a, d, 6, O), iso(b, d, 6, O), iso(b, d, h - 6, O), iso(a, d, h - 6, O)])));
+    add(seg(iso(w, d / 2, 4, O), iso(w, d / 2, h - 4, O)));
+    ribsX(0, d, w, 6, h - 6, 10, O).forEach(p => add(p, 'soft'));
+    boxEdges(-38, 12, 0, 34, 58, 64, O).forEach(p => add(p));
+    ribsY(-38, -4, 70, 8, 56, 5, O).forEach(p => add(p, 'soft'));
+    boxEdges(20, -6, h, 60, 40, 14, O).forEach(p => add(p));
+    // cutaway: modules inside
+    for (let i = 0; i < 5; i++) add(poly([iso(40 + i * 56, d, 14, O), iso(84 + i * 56, d, 14, O), iso(84 + i * 56, d, h - 16, O), iso(40 + i * 56, d, h - 16, O)]));
+  }
+
+  function drawPowerBlock(add) {
+    for (let i = 0; i < 6; i++) {
+      const x = i * 78 + (i > 2 ? 30 : 0);
+      boxEdges(x, 0, 0, 54, 250, 70, O).forEach(p => add(p));
+      ribsX(0, 250, x + 54, 6, 64, 10, O).forEach(p => add(p, 'soft'));
+      add(poly([iso(x + 8, 250, 8, O), iso(x + 46, 250, 8, O), iso(x + 46, 250, 62, O), iso(x + 8, 250, 62, O)]));
+    }
+    boxEdges(520, 260, 0, 60, 60, 56, O).forEach(p => add(p));
+    boxEdges(520, 330, 0, 40, 40, 40, O).forEach(p => add(p));
+    add(poly([iso(-20, 272, 0, O), iso(600, 272, 0, O)], false), 'soft');
+  }
+
+  function drawSystem(add) {
+    const W = 1000, D = 760;
+    const site = (m, cls) => add(poly([iso(m, m, 0, O), iso(W - m, m, 0, O), iso(W - m, D - m, 0, O), iso(m, D - m, 0, O)]), cls);
+    site(0); site(24, 'soft');
+    add(seg(iso(W / 2, 40, 0, O), iso(W / 2, D - 40, 0, O)), 'soft');
+    add(seg(iso(40, D / 2, 0, O), iso(W - 40, D / 2, 0, O)), 'soft');
+    for (let bx = 0; bx < 2; bx++) for (let by = 0; by < 2; by++) {
+      for (let r = 0; r < 6; r++) {
+        const x0 = 70 + bx * 470, y0 = 70 + by * 350 + r * 44;
+        boxEdges(x0, y0, 0, 360, 20, 10, O).forEach(p => add(p));
+      }
+    }
+    [120, 360, 620, 860].forEach(x => {
+      add(seg(iso(x, 10, 0, O), iso(x, 10, 90, O)));
+      add(seg(iso(x - 16, 10, 80, O), iso(x + 16, 10, 80, O)));
+    });
+    boxEdges(W - 90, D - 90, 0, 50, 50, 40, O).forEach(p => add(p));
+  }
+
+  const STEPS = [
+    { t: 'Iron', lead: 'It starts with iron.', body: 'Plentiful, low-cost and easy to source at scale, with no rare or conflict minerals.', draw: drawIron },
+    { t: 'Electrode', lead: 'Shaped for the reaction.', body: 'Iron is pressed into porous plates that can rust and un-rust thousands of times.', draw: drawElectrode },
+    { t: 'Cell', lead: 'Iron, air and water.', body: 'Electrodes sit in a water-based electrolyte and breathe air to charge and discharge.', draw: drawCell },
+    { t: 'Module', lead: 'Cells, grouped.', body: 'Dozens of cells are wired together into a single, serviceable unit.', draw: drawModule },
+    { t: 'Enclosure', lead: 'Built for the outdoors.', body: 'Modules ship inside rugged, climate-controlled enclosures ready for any site.', draw: drawEnclosure },
+    { t: 'Power block', lead: 'From modules to megawatts.', body: 'Enclosures pair with inverters to form a block that feeds AC power to the grid.', draw: drawPowerBlock },
+    { t: 'System', lead: 'Multi-day storage at grid scale.', body: 'Power blocks tile across a site to deliver clean energy for up to 100 hours.', draw: drawSystem },
+  ];
+  const N = STEPS.length;
+
+  const buildSvg = document.getElementById('buildSvg');
+  const labelsEl = document.getElementById('labels');
+  const railEl = document.getElementById('rail');
+  const arts = [], labels = [], railBtns = [];
+
+  STEPS.forEach((step, i) => {
+    const outer = document.createElementNS(NS, 'g');
+    outer.setAttribute('class', 'art');
+    const inner = document.createElementNS(NS, 'g');
+    outer.appendChild(inner);
+    buildSvg.appendChild(outer);
+    const add = (d, cls) => {
+      const p = document.createElementNS(NS, 'path');
+      p.setAttribute('d', d); p.setAttribute('pathLength', '1');
+      if (cls) p.setAttribute('class', cls);
+      inner.appendChild(p);
+    };
+    const addCircle = (cx, cy, r, cls) => {
+      const c = document.createElementNS(NS, 'circle');
+      c.setAttribute('cx', f(cx)); c.setAttribute('cy', f(cy)); c.setAttribute('r', r); c.setAttribute('pathLength', '1');
+      if (cls) c.setAttribute('class', cls);
+      inner.appendChild(c);
+    };
+    step.draw(add, addCircle);
+    // fit every drawing into the same box, centered on the origin
+    const bb = inner.getBBox();
+    const k = Math.min(420 / bb.width, 300 / bb.height);
+    inner.setAttribute('transform', `scale(${k}) translate(${-(bb.x + bb.width / 2)} ${-(bb.y + bb.height / 2)})`);
+    inner.setAttribute('stroke-width', (0.95 / k).toFixed(3));   // keep line weight constant across drawings
+    arts.push(outer);
+
+    const side = i % 2 ? 'right' : 'left';
+    const lab = document.createElement('div');
+    lab.className = `label label--${side}`;
+    const num = String(i + 1).padStart(2, '0');
+    lab.innerHTML = `<h3>${num}. ${step.t}</h3><p class="lead">${step.lead}</p><p class="body">${step.body}</p>`;
+    labelsEl.appendChild(lab);
+    labels.push({ el: lab, side });
+
+    const li = document.createElement('li');
+    const b = document.createElement('button');
+    b.type = 'button'; b.textContent = `${num} ${step.t}`;
+    b.addEventListener('click', () => scrollToStep(i));
+    li.appendChild(b); railEl.appendChild(li); railBtns.push(b);
+  });
+
+  const build = document.getElementById('build');
+  build.style.height = `${N * 90 + 60}vh`;
+
+  /* ---------- Reveal text: split into words ---------- */
+  const revealText = document.getElementById('revealText');
+  revealText.innerHTML = revealText.textContent.trim().split(/\s+/).map(w => `<span class="w">${w}</span>`).join(' ');
+  const words = [...revealText.querySelectorAll('.w')];
+  const reveal = document.getElementById('reveal');
+
+  /* ---------- Scroll engine ---------- */
+  const heroMedia = document.getElementById('heroMedia');
+  const heroContent = document.querySelector('.hero__content');
+  const LEAD = 0.6;   // how early (in viewports) the build sequence starts drawing
+  const HOLD = 0.3;   // extra scroll kept on the last step
+
+  function buildProgress() {
+    const r = build.getBoundingClientRect(), vh = innerHeight;
+    const t = clamp((LEAD * vh - r.top) / (r.height - vh + LEAD * vh));
+    return Math.min(-LEAD + t * (N - 1 + LEAD + HOLD), N - 1);
+  }
+  function scrollToStep(i) {
+    const vh = innerHeight, top = build.getBoundingClientRect().top + scrollY;
+    const t = (i + LEAD) / (N - 1 + LEAD + HOLD);
+    scrollTo({ top: top - LEAD * vh + t * (build.offsetHeight - vh + LEAD * vh) + 2, behavior: reduce ? 'auto' : 'smooth' });
+  }
+
+  let ticking = false;
+  function update() {
+    ticking = false;
+    const y = scrollY, vh = innerHeight, mobile = innerWidth <= 760;
+
+    // hero parallax
+    if (y < vh * 1.2) {
+      heroMedia.style.translate = `0 ${y * 0.35}px`;
+      heroContent.style.opacity = clamp(1 - y / (vh * 0.55));
+    }
+
+    // word reveal
+    const rr = reveal.getBoundingClientRect();
+    const rp = clamp((vh * 0.55 - rr.top) / (rr.height - vh * 0.45));
+    const k = rp * words.length * 1.1;
+    words.forEach((w, i) => { const o = (0.2 + 0.8 * clamp(k - i)).toFixed(2); if (w.style.opacity !== o) w.style.opacity = o; });
+
+    // build sequence
+    const P = buildProgress();
+    arts.forEach((g, i) => {
+      const d = P - i;
+      const draw = clamp((d + 0.6) / 0.5);
+      const op = d < 0 ? clamp((d + 0.65) / 0.35) : clamp(1 - (d - 0.2) / 0.4);
+      const sc = d < 0 ? 1 + -d * 0.3 : 1 - d * 0.45;
+      const tx = mobile ? 0 : (labels[i].side === 'left' ? 70 : -70);
+      g.style.opacity = op.toFixed(3);
+      g.style.setProperty('--draw', draw.toFixed(3));
+      g.setAttribute('transform', `translate(${tx} 0) scale(${sc.toFixed(4)})`);
+      g.style.visibility = op <= 0 ? 'hidden' : 'visible';
+    });
+    labels.forEach(({ el }, i) => {
+      const d = P - i;
+      const op = clamp(1 - Math.abs(d) * (mobile ? 2.2 : 1.3));
+      el.style.opacity = op.toFixed(3);
+      el.style.translate = mobile ? `0 ${(-d * 24).toFixed(1)}px` : `0 calc(-50% + ${(-d * 36).toFixed(1)}px)`;
+      el.style.visibility = op <= 0 ? 'hidden' : 'visible';
+    });
+    const active = clamp(Math.round(P), 0, N - 1);
+    railBtns.forEach((b, i) => b.classList.toggle('is-active', i === active));
+  }
+  const onScroll = () => { if (!ticking) { ticking = true; requestAnimationFrame(update); } };
+  addEventListener('scroll', onScroll, { passive: true });
+  addEventListener('resize', onScroll);
+
+  /* ---------- Loader sequence ---------- */
+  buildHero();
+  update();
+  const loader = document.getElementById('loader');
+  const count = document.getElementById('count');
+  const finish = () => {
+    loader.classList.add('is-done');
+    document.body.classList.remove('loading');
+    document.body.classList.add('ready');
+  };
+  if (reduce) { count.textContent = '100%'; finish(); return; }
+
+  setTimeout(() => {
+    loader.classList.add('is-see');
+    document.body.classList.add('push');   // slow camera push-in on the hero
+    const t0 = performance.now(), dur = 1900;
+    const tick = now => {
+      const t = clamp((now - t0) / dur);
+      const e = 1 - Math.pow(1 - t, 2.2);
+      count.textContent = Math.round(e * 100) + '%';
+      if (t < 1) requestAnimationFrame(tick); else setTimeout(finish, 380);
+    };
+    requestAnimationFrame(tick);
+  }, 450);
+})();
+</script>
+</body>
+</html>
